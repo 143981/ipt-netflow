@@ -3254,7 +3254,7 @@ static void free_templates(void)
 }
 
 /* find old, or create new combined template from template key (tmask) */
-static struct data_template *get_template(const unsigned int tmask)
+static struct data_template *get_template(const unsigned int tmask, int tid)
 {
 	struct base_template *tlist[BTPL_MAX];
 	struct data_template *tpl;
@@ -3399,10 +3399,16 @@ static struct data_template *get_template(const unsigned int tmask)
 		tpl->tpl_size = sizeof(struct flowset_template);
 	tpl->length = length;
 	tpl->rec_size = 0;
-	tpl->template_id_n = htons(template_ids++);
+	if(tid==-1) {
+		tpl->template_id_n = htons(template_ids++);
+	} else {
+		tpl->template_id_n = htons(tid);
+	}
 	tpl_gen_count++;
-	if (template_ids >= 0x00010000)
-		template_ids = FLOWSET_DATA_FIRST;
+	if(tid==-1) {
+		if (template_ids >= 0x00010000)
+			template_ids = FLOWSET_DATA_FIRST;
+	}
 	tpl->exported_cnt = 0;
 	tpl->exported_ts = 0;
 
@@ -3738,11 +3744,11 @@ static unsigned char *alloc_record_tpl(struct data_template *tpl)
 	return ptr;
 }
 
-static unsigned char *alloc_record_key(const unsigned int t_key, struct data_template **ptpl)
+static unsigned char *alloc_record_key(const unsigned int t_key, struct data_template **ptpl, int tid)
 {
 	struct data_template *tpl;
 
-	tpl = get_template(t_key);
+	tpl = get_template(t_key, tid);
 	if (unlikely(!tpl)) {
 		printk(KERN_INFO "ipt_NETFLOW: template %#x allocation failed.\n", t_key);
 		NETFLOW_STAT_INC_ATOMIC(alloc_err);
@@ -3758,7 +3764,7 @@ static void netflow_export_flow_tpl(struct ipt_netflow *nf)
 	struct data_template *tpl;
 	unsigned int tpl_mask;
 	int i;
-
+	int tid = -1;
 	if (unlikely(debug > 2))
 		printk(KERN_INFO "adding flow to export (%d)\n",
 		    pdu_data_records + pdu_tpl_records);
@@ -3767,6 +3773,7 @@ static void netflow_export_flow_tpl(struct ipt_netflow *nf)
 #ifdef CONFIG_NF_NAT_NEEDED
 	if (nf->nat) {
 		tpl_mask = BTPL_NAT4;
+		tid = 333;
 		goto ready;
 	}
 #endif
@@ -3840,7 +3847,7 @@ static void netflow_export_flow_tpl(struct ipt_netflow *nf)
 #ifdef CONFIG_NF_NAT_NEEDED
 ready:
 #endif
-	ptr = alloc_record_key(tpl_mask, &tpl);
+	ptr = alloc_record_key(tpl_mask, &tpl, tid);
 	if (unlikely(!ptr)) {
 		NETFLOW_STAT_ADD(pkt_lost, nf->nr_packets);
 		NETFLOW_STAT_ADD(traf_lost, nf->nr_bytes);
@@ -3902,7 +3909,7 @@ static void export_stat_st_ts(const unsigned int tpl_mask, struct ipt_netflow_st
 	struct data_template *tpl;
 	int i;
 
-	ptr = alloc_record_key(tpl_mask, &tpl);
+	ptr = alloc_record_key(tpl_mask, &tpl, -1);
 	if (unlikely(!ptr))
 		return;
 
@@ -4179,7 +4186,7 @@ static void export_dev(struct net_device *dev)
 	struct data_template *tpl;
 	int i;
 
-	ptr = alloc_record_key(OTPL_IFNAMES, &tpl);
+	ptr = alloc_record_key(OTPL_IFNAMES, &tpl, -1);
 	if (unlikely(!ptr))
 		return;
 
@@ -4394,7 +4401,7 @@ static int netflow_scan_and_export(const int flush)
 #ifdef ENABLE_SAMPLER
 		export_sampler_parameters();
 #endif
-		export_ifnames();
+		//export_ifnames();
 	}
 
 	read_lock_bh(&htable_rwlock);
@@ -5457,8 +5464,8 @@ static int set_notifier_cb(NET_STRUCT)
 			printk(KERN_ERR "natevents_net_init: %p != %p (report error.)\n",
 			    saved_event_cb, notifier);
 		rcu_assign_pointer(nf_conntrack_event_cb, &ctnl_notifier);
-	} else
-		printk(KERN_ERR "ipt_NETFLOW: natevents already enabled.\n");
+	} /*else
+		printk(KERN_ERR "ipt_NETFLOW: natevents already enabled.\n");*/
 	return 0;
 }
 static void unset_notifier_cb(NET_STRUCT)
@@ -5477,8 +5484,8 @@ static void unset_notifier_cb(NET_STRUCT)
 #endif
 		} else
 			rcu_assign_pointer(nf_conntrack_event_cb, saved_event_cb);
-	} else
-		printk(KERN_ERR "ipt_NETFLOW: natevents already disabled.\n");
+	} /* else
+		printk(KERN_ERR "ipt_NETFLOW: natevents already disabled.\n");*/
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,2,0)
@@ -5766,8 +5773,8 @@ static int __init ipt_netflow_init(void)
 	mod_timer(&rate_timer, jiffies + (HZ * SAMPLERATE));
 
 	peakflows_at = jiffies;
-	if (xt_register_targets(ipt_netflow_reg, ARRAY_SIZE(ipt_netflow_reg)))
-		goto err_stop_timer;
+/*	if (xt_register_targets(ipt_netflow_reg, ARRAY_SIZE(ipt_netflow_reg)))
+		goto err_stop_timer;*/
 
 #ifdef CONFIG_NF_NAT_NEEDED
 	if (natevents)
@@ -5823,7 +5830,7 @@ static void __exit ipt_netflow_fini(void)
 #ifdef ENABLE_PROMISC
 	switch_promisc(0);
 #endif
-	xt_unregister_targets(ipt_netflow_reg, ARRAY_SIZE(ipt_netflow_reg));
+//	xt_unregister_targets(ipt_netflow_reg, ARRAY_SIZE(ipt_netflow_reg));
 #ifdef CONFIG_NF_NAT_NEEDED
 	if (natevents)
 		unregister_ct_events();
