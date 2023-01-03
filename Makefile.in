@@ -20,7 +20,7 @@ CC = gcc
 obj-m = ipt_NETFLOW.o
 ccflags-y = @KOPTS@
 
-all: ipt_NETFLOW.ko libipt_NETFLOW.so libip6t_NETFLOW.so @SNMPTARGET@
+all: ipt_NETFLOW.ko @SNMPTARGET@
 
 ipt_NETFLOW.ko: version.h ipt_NETFLOW.c ipt_NETFLOW.h compat_def.h compat.h Makefile
 	@echo Compiling $(shell ./version.sh) for kernel $(KVERSION)

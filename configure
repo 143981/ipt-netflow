@@ -634,14 +634,14 @@ kernel_check_config
 kernel_check_features
 
 CC=${CC:-gcc}
-test "$IPTBIN" || IPTBIN=`which iptables`
+#test "$IPTBIN" || IPTBIN=`which iptables`
 
-iptables_find_version	#IPTVER
-iptables_try_pkgconfig	#try to configure from pkg-config
-iptables_find_src	#IPTSRC
-iptables_src_version	#check that IPTSRC match to IPTVER
-iptables_inc		#IPTINC
-iptables_modules	#IPTLIB
+#iptables_find_version	#IPTVER
+#iptables_try_pkgconfig	#try to configure from pkg-config
+#iptables_find_src	#IPTSRC
+#iptables_src_version	#check that IPTSRC match to IPTVER
+#iptables_inc		#IPTINC
+#iptables_modules	#IPTLIB
 
 snmp_check
 dkms_check
